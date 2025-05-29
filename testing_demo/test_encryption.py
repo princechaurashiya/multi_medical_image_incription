@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 from typing import List, Dict, Any
 
 # Import all modules
-from medical_image_encryption import MedicalImageEncryption
-from key_generation import KeyGenerator
-from dna_operations import DNAOperations
-from fisher_scrambling import FisherScrambling
-from bit_plane_operations import BitPlaneOperations
+from core_implementation.medical_image_encryption import MedicalImageEncryption
+from core_implementation.key_generation import KeyGenerator
+from core_implementation.dna_operations import DNAOperations
+from core_implementation.fisher_scrambling import FisherScrambling
+from core_implementation.bit_plane_operations import BitPlaneOperations
 
 
 class EncryptionTestSuite:

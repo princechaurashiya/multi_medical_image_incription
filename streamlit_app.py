@@ -17,9 +17,10 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Import our encryption modules
-from medical_image_encryption import MedicalImageEncryption
-from test_encryption import EncryptionTestSuite
-from demo_encryption import analyze_encryption_quality, calculate_entropy
+from core_implementation.medical_image_encryption import MedicalImageEncryption
+from core_implementation.advanced_medical_encryption import AdvancedMedicalImageEncryption
+from testing_demo.test_encryption import EncryptionTestSuite
+from testing_demo.demo_encryption import analyze_encryption_quality, calculate_entropy
 
 # Page configuration
 st.set_page_config(
@@ -77,13 +78,17 @@ def main():
     st.sidebar.title("🔧 Navigation")
     page = st.sidebar.selectbox(
         "Choose a section:",
-        ["🏠 Home", "🔐 Encrypt Images", "🧪 Run Test Suite", "📊 Security Analysis", "📈 Performance Benchmarks", "ℹ️ About System"]
+        ["🏠 Home", "🔐 Encrypt Images", "🔄 Multi-Image Encryption", "🚀 Advanced SAMCML Encryption", "🧪 Run Test Suite", "📊 Security Analysis", "📈 Performance Benchmarks", "ℹ️ About System"]
     )
 
     if page == "🏠 Home":
         show_home_page()
     elif page == "🔐 Encrypt Images":
         show_encryption_page()
+    elif page == "🔄 Multi-Image Encryption":
+        show_multi_image_encryption_page()
+    elif page == "🚀 Advanced SAMCML Encryption":
+        show_advanced_samcml_encryption_page()
     elif page == "🧪 Run Test Suite":
         show_test_suite_page()
     elif page == "📊 Security Analysis":
@@ -153,9 +158,41 @@ def show_home_page():
             st.rerun()
 
     with col2:
-        if st.button("📊 Show Security Analysis", type="secondary"):
-            st.session_state.show_analysis = True
+        if st.button("🔄 Try Multi-Image Encryption", type="secondary"):
+            st.session_state.show_multi = True
             st.rerun()
+
+    # Additional features showcase
+    st.markdown('<h3 class="sub-header">✨ Key Features</h3>', unsafe_allow_html=True)
+
+    feature_cols = st.columns(3)
+
+    with feature_cols[0]:
+        st.markdown("""
+        **🔐 Single Image Encryption**
+        - Upload one medical image
+        - Real-time encryption
+        - Instant security analysis
+        - Download cipher images
+        """)
+
+    with feature_cols[1]:
+        st.markdown("""
+        **🔄 Multi-Image Batch Processing**
+        - Upload multiple images at once
+        - Batch encryption with progress tracking
+        - Different seed modes available
+        - ZIP download for all results
+        """)
+
+    with feature_cols[2]:
+        st.markdown("""
+        **📊 Advanced Analytics**
+        - Comprehensive security analysis
+        - Performance benchmarking
+        - Test suite validation
+        - Visual result comparison
+        """)
 
     # Recent results preview
     if 'test_results' in st.session_state:
@@ -224,6 +261,659 @@ def show_encryption_page():
     if 'cipher_images' in st.session_state:
         show_encryption_results()
 
+def show_multi_image_encryption_page():
+    st.markdown('<h2 class="sub-header">🔄 Multi-Image Encryption Interface</h2>', unsafe_allow_html=True)
+
+    st.markdown("""
+    **Encrypt multiple medical images simultaneously** with batch processing capabilities.
+    Upload multiple images and encrypt them all at once with the same or different settings.
+    """)
+
+    # Sidebar settings
+    st.sidebar.markdown("### ⚙️ Multi-Encryption Settings")
+
+    # Encryption mode selection
+    encryption_mode = st.sidebar.radio(
+        "Encryption Mode:",
+        ["Same Seed for All", "Different Seed for Each", "Custom Seeds"]
+    )
+
+    if encryption_mode == "Same Seed for All":
+        base_seed = st.sidebar.number_input("Base Seed", min_value=1, max_value=999999, value=42)
+    elif encryption_mode == "Different Seed for Each":
+        base_seed = st.sidebar.number_input("Starting Seed", min_value=1, max_value=999999, value=42)
+        st.sidebar.info("Seeds will be: base_seed, base_seed+1, base_seed+2, ...")
+
+    # Batch processing options
+    st.sidebar.markdown("### 🔧 Batch Options")
+    parallel_processing = st.sidebar.checkbox("Enable Parallel Processing", value=True)
+    save_individual = st.sidebar.checkbox("Save Individual Results", value=True)
+    create_summary = st.sidebar.checkbox("Create Summary Report", value=True)
+
+    # File upload - multiple files
+    uploaded_files = st.file_uploader(
+        "📤 Upload Multiple Medical Images",
+        type=['png', 'jpg', 'jpeg', 'bmp', 'tiff'],
+        accept_multiple_files=True,
+        help="Upload multiple medical images (PNG, JPG, JPEG, BMP, TIFF)"
+    )
+
+    if uploaded_files:
+        st.markdown(f"### 📋 Selected Images ({len(uploaded_files)} files)")
+
+        # Display uploaded images in a grid
+        cols = st.columns(min(4, len(uploaded_files)))
+        image_data = []
+
+        for i, uploaded_file in enumerate(uploaded_files):
+            with cols[i % 4]:
+                image = Image.open(uploaded_file)
+                image_array = np.array(image.convert('L'))
+                image_data.append({
+                    'name': uploaded_file.name,
+                    'array': image_array,
+                    'file': uploaded_file
+                })
+
+                st.image(image, caption=f"{uploaded_file.name}", use_column_width=True)
+                st.write(f"Size: {image_array.shape[0]}×{image_array.shape[1]}")
+                st.write(f"Entropy: {calculate_entropy(image_array):.3f}")
+
+        # Encryption settings per image (for custom mode)
+        if encryption_mode == "Custom Seeds":
+            st.markdown("### 🎛️ Custom Seed Configuration")
+            custom_seeds = {}
+
+            seed_cols = st.columns(min(3, len(uploaded_files)))
+            for i, img_data in enumerate(image_data):
+                with seed_cols[i % 3]:
+                    custom_seeds[img_data['name']] = st.number_input(
+                        f"Seed for {img_data['name'][:20]}...",
+                        min_value=1, max_value=999999,
+                        value=42 + i,
+                        key=f"seed_{i}"
+                    )
+
+        # Encryption button
+        if st.button("🚀 Encrypt All Images", type="primary", key="multi_encrypt"):
+            if len(uploaded_files) > 0:
+                encrypt_multiple_images(image_data, encryption_mode, base_seed if encryption_mode != "Custom Seeds" else custom_seeds, parallel_processing, save_individual, create_summary)
+            else:
+                st.warning("Please upload at least one image to encrypt.")
+
+    # Display multi-encryption results
+    if 'multi_encryption_results' in st.session_state:
+        show_multi_encryption_results()
+
+def show_advanced_samcml_encryption_page():
+    st.markdown('<h2 class="sub-header">🚀 Advanced SAMCML Encryption System</h2>', unsafe_allow_html=True)
+
+    st.markdown("""
+    **State-of-the-art encryption** using SAMCML chaotic system, dynamic DNA computing,
+    3D Fisher-Yates scrambling, and advanced pixel blurring techniques.
+
+    **Key Features:**
+    - 🧬 **SAMCML Chaotic System**: Sin-Arcsin-Arnold Multi-Dynamic Coupled Map Lattice
+    - 🔬 **Dynamic DNA Computing**: 8 encoding rules with 3-bit selection
+    - 🎲 **3D Fisher-Yates Scrambling**: Cross-plane scrambling with multiple rounds
+    - 🎯 **Advanced Pixel Blurring**: Bit plane extraction with salt-and-pepper noise
+    - 🔒 **New DNA Operations**: Novel DNA operation matrix with inverse
+    """)
+
+    # Sidebar settings
+    st.sidebar.markdown("### ⚙️ Advanced Encryption Settings")
+
+    # Encryption parameters
+    noise_density = st.sidebar.slider("Salt-Pepper Noise Density", 0.01, 0.2, 0.05, 0.01)
+    scrambling_rounds = st.sidebar.selectbox("3D Scrambling Rounds", [1, 2, 3, 4, 5], index=2)
+    batch_mode = st.sidebar.selectbox("Batch Mode", ["same_seed", "different_seeds", "adaptive"])
+
+    # Advanced options
+    st.sidebar.markdown("### 🔬 Advanced Options")
+    show_intermediate = st.sidebar.checkbox("Show Intermediate Results", value=False)
+    detailed_analysis = st.sidebar.checkbox("Detailed Security Analysis", value=True)
+    save_metadata = st.sidebar.checkbox("Save Detailed Metadata", value=True)
+
+    # File upload
+    uploaded_files = st.file_uploader(
+        "📤 Upload Medical Images for Advanced Encryption",
+        type=['png', 'jpg', 'jpeg', 'bmp', 'tiff'],
+        accept_multiple_files=True,
+        help="Upload medical images for SAMCML encryption"
+    )
+
+    if uploaded_files:
+        st.markdown(f"### 📋 Selected Images ({len(uploaded_files)} files)")
+
+        # Display uploaded images
+        cols = st.columns(min(4, len(uploaded_files)))
+        image_paths = []
+
+        for i, uploaded_file in enumerate(uploaded_files):
+            with cols[i % 4]:
+                image = Image.open(uploaded_file)
+                st.image(image, caption=f"{uploaded_file.name}", use_column_width=True)
+
+                # Save temporarily for processing
+                temp_path = f"temp_advanced_{i}_{int(time.time())}.png"
+                image_array = np.array(image.convert('L'))
+                cv2.imwrite(temp_path, image_array)
+                image_paths.append(temp_path)
+
+                st.write(f"Size: {image_array.shape[0]}×{image_array.shape[1]}")
+                st.write(f"Entropy: {calculate_entropy(image_array):.3f}")
+
+        # Encryption button
+        if st.button("🚀 Start Advanced SAMCML Encryption", type="primary", key="advanced_encrypt"):
+            if len(uploaded_files) > 0:
+                encrypt_with_advanced_samcml(image_paths, noise_density, scrambling_rounds,
+                                           batch_mode, show_intermediate, detailed_analysis, save_metadata)
+            else:
+                st.warning("Please upload at least one image to encrypt.")
+
+    # Display advanced encryption results
+    if 'advanced_encryption_results' in st.session_state:
+        show_advanced_encryption_results()
+
+def encrypt_with_advanced_samcml(image_paths, noise_density, scrambling_rounds,
+                                batch_mode, show_intermediate, detailed_analysis, save_metadata):
+    """Encrypt images using advanced SAMCML system"""
+
+    with st.spinner("🔄 Processing with Advanced SAMCML System... Please wait"):
+        start_time = time.time()
+
+        # Initialize advanced encryption system
+        encryption_system = AdvancedMedicalImageEncryption(
+            seed=42,
+            noise_density=noise_density
+        )
+
+        # Create progress tracking
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        results = []
+
+        if len(image_paths) == 1:
+            # Single image encryption
+            status_text.text("Encrypting single image with SAMCML...")
+
+            try:
+                cipher_images, metadata = encryption_system.encrypt_single_medical_image(image_paths[0])
+
+                # Security analysis if requested
+                if detailed_analysis:
+                    original_image = cv2.imread(image_paths[0], cv2.IMREAD_GRAYSCALE)
+                    security_analysis = encryption_system.analyze_encryption_security(original_image, cipher_images)
+                    metadata['security_analysis'] = security_analysis
+
+                results.append({
+                    'cipher_images': cipher_images,
+                    'metadata': metadata,
+                    'status': 'success'
+                })
+
+            except Exception as e:
+                st.error(f"Error in advanced encryption: {str(e)}")
+                results.append({'status': 'failed', 'error': str(e)})
+
+        else:
+            # Batch encryption
+            status_text.text(f"Batch encrypting {len(image_paths)} images...")
+
+            try:
+                batch_results = encryption_system.encrypt_multiple_medical_images(
+                    image_paths, batch_mode=batch_mode
+                )
+
+                for i, (cipher_images, metadata) in enumerate(batch_results):
+                    if len(cipher_images) > 0:  # Success
+                        # Security analysis if requested
+                        if detailed_analysis:
+                            original_image = cv2.imread(image_paths[i], cv2.IMREAD_GRAYSCALE)
+                            security_analysis = encryption_system.analyze_encryption_security(original_image, cipher_images)
+                            metadata['security_analysis'] = security_analysis
+
+                        results.append({
+                            'cipher_images': cipher_images,
+                            'metadata': metadata,
+                            'status': 'success'
+                        })
+                    else:  # Failed
+                        results.append({
+                            'status': 'failed',
+                            'error': metadata.get('error', 'Unknown error')
+                        })
+
+                    # Update progress
+                    progress_bar.progress((i + 1) / len(image_paths))
+
+            except Exception as e:
+                st.error(f"Error in batch encryption: {str(e)}")
+                results.append({'status': 'failed', 'error': str(e)})
+
+        total_time = time.time() - start_time
+        progress_bar.progress(1.0)
+        status_text.text("✅ Advanced SAMCML encryption completed!")
+
+        # Store results
+        st.session_state.advanced_encryption_results = {
+            'results': results,
+            'total_time': total_time,
+            'settings': {
+                'noise_density': noise_density,
+                'scrambling_rounds': scrambling_rounds,
+                'batch_mode': batch_mode,
+                'show_intermediate': show_intermediate,
+                'detailed_analysis': detailed_analysis
+            }
+        }
+
+        # Clean up temp files
+        for path in image_paths:
+            try:
+                os.remove(path)
+            except:
+                pass
+
+        # Success message
+        successful = sum(1 for r in results if r['status'] == 'success')
+        st.success(f"✅ Advanced SAMCML encryption completed! {successful}/{len(results)} images processed in {total_time:.2f} seconds")
+
+        st.rerun()
+
+def show_advanced_encryption_results():
+    """Display results from advanced SAMCML encryption"""
+    st.markdown('<h3 class="sub-header">🎯 Advanced SAMCML Encryption Results</h3>', unsafe_allow_html=True)
+
+    results_data = st.session_state.advanced_encryption_results
+    results = results_data['results']
+    total_time = results_data['total_time']
+    settings = results_data['settings']
+
+    # Summary metrics
+    successful = [r for r in results if r['status'] == 'success']
+    failed = [r for r in results if r['status'] == 'failed']
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("📊 Total Images", len(results))
+    with col2:
+        st.metric("✅ Successful", len(successful))
+    with col3:
+        st.metric("❌ Failed", len(failed))
+    with col4:
+        st.metric("⏱️ Total Time", f"{total_time:.2f}s")
+
+    if successful:
+        # Create tabs for different views
+        tab1, tab2, tab3, tab4 = st.tabs(["📋 Summary", "🖼️ Visual Results", "🔒 Security Analysis", "📊 Advanced Metrics"])
+
+        with tab1:
+            # Summary table
+            summary_data = []
+            for i, result in enumerate(successful):
+                metadata = result['metadata']
+                summary_data.append({
+                    "Image": metadata['image_info']['name'],
+                    "Encryption Time": f"{metadata['performance']['encryption_time']:.3f}s",
+                    "Throughput": f"{metadata['performance']['throughput_pixels_per_second']:.0f} px/s",
+                    "SAMCML Params": f"μ1={metadata['encryption_params']['samcml_params']['parameters']['mu1']:.3f}",
+                    "DNA Rules Used": metadata['dna_info']['unique_rules_used'],
+                    "Scrambling Ops": metadata['scrambling_info']['total_operations'],
+                    "Security Score": f"{metadata.get('security_analysis', {}).get('aggregate', {}).get('overall_security_score', 0):.1f}/100"
+                })
+
+            df_summary = pd.DataFrame(summary_data)
+            st.dataframe(df_summary, use_container_width=True)
+
+        with tab2:
+            # Visual results
+            for i, result in enumerate(successful):
+                st.markdown(f"#### 🖼️ {result['metadata']['image_info']['name']}")
+
+                cipher_images = result['cipher_images']
+                cols = st.columns(min(5, len(cipher_images)))
+
+                for j, cipher in enumerate(cipher_images):
+                    with cols[j]:
+                        st.image(cipher, caption=f"Cipher {j+1}", use_column_width=True, clamp=True)
+
+                        # Download button
+                        cipher_bytes = cv2.imencode('.png', cipher)[1].tobytes()
+                        st.download_button(
+                            f"💾 Download",
+                            cipher_bytes,
+                            f"advanced_cipher_{i+1}_{j+1}.png",
+                            "image/png",
+                            key=f"adv_download_{i}_{j}"
+                        )
+
+                st.divider()
+
+        with tab3:
+            # Security analysis
+            if settings['detailed_analysis']:
+                for i, result in enumerate(successful):
+                    if 'security_analysis' in result['metadata']:
+                        st.markdown(f"#### 🔒 Security Analysis: {result['metadata']['image_info']['name']}")
+
+                        security = result['metadata']['security_analysis']
+
+                        # Aggregate metrics
+                        if 'aggregate' in security:
+                            agg = security['aggregate']
+
+                            sec_col1, sec_col2, sec_col3, sec_col4 = st.columns(4)
+
+                            with sec_col1:
+                                st.metric("Entropy", f"{agg['average_entropy']:.3f}/8.0")
+                            with sec_col2:
+                                st.metric("Correlation", f"{agg['average_correlation']:.6f}")
+                            with sec_col3:
+                                st.metric("NPCR", f"{agg['average_npcr']:.2f}%")
+                            with sec_col4:
+                                st.metric("UACI", f"{agg['average_uaci']:.2f}%")
+
+                            # Security score breakdown
+                            st.markdown("**Security Score Breakdown:**")
+                            score_data = {
+                                'Metric': ['Entropy', 'Correlation', 'NPCR', 'UACI', 'Overall'],
+                                'Score': [
+                                    agg['entropy_score'],
+                                    agg['correlation_score'],
+                                    agg['npcr_score'],
+                                    agg['uaci_score'],
+                                    agg['overall_security_score']
+                                ]
+                            }
+
+                            fig = px.bar(score_data, x='Metric', y='Score',
+                                       title='Security Score Breakdown (0-100)',
+                                       color='Score', color_continuous_scale='Viridis')
+                            st.plotly_chart(fig, use_container_width=True)
+
+                        st.divider()
+            else:
+                st.info("Enable 'Detailed Security Analysis' in settings to see comprehensive security metrics.")
+
+        with tab4:
+            # Advanced metrics
+            st.markdown("#### 📊 Advanced System Metrics")
+
+            # Aggregate performance metrics
+            avg_encryption_time = np.mean([r['metadata']['performance']['encryption_time'] for r in successful])
+            avg_throughput = np.mean([r['metadata']['performance']['throughput_pixels_per_second'] for r in successful])
+
+            perf_col1, perf_col2 = st.columns(2)
+
+            with perf_col1:
+                st.metric("Average Encryption Time", f"{avg_encryption_time:.3f}s")
+                st.metric("Average Throughput", f"{avg_throughput:.0f} pixels/sec")
+
+            with perf_col2:
+                st.metric("System Version", "Advanced SAMCML v2.0")
+                st.metric("Keyspace Size", "2^512")
+
+            # SAMCML parameters visualization
+            if successful:
+                samcml_params = successful[0]['metadata']['encryption_params']['samcml_params']['parameters']
+
+                st.markdown("**SAMCML System Parameters:**")
+                param_data = {
+                    'Parameter': ['μ1', 'μ2', 'μ3', 'x1', 'x2', 'x3', 'e1', 'e2', 'e3'],
+                    'Value': [
+                        samcml_params['mu1'], samcml_params['mu2'], samcml_params['mu3'],
+                        samcml_params['x1'], samcml_params['x2'], samcml_params['x3'],
+                        samcml_params['e1'], samcml_params['e2'], samcml_params['e3']
+                    ]
+                }
+
+                fig = px.bar(param_data, x='Parameter', y='Value',
+                           title='SAMCML Chaotic System Parameters',
+                           color='Value', color_continuous_scale='Plasma')
+                st.plotly_chart(fig, use_container_width=True)
+
+def encrypt_multiple_images(image_data, encryption_mode, seeds, parallel_processing, save_individual, create_summary):
+    """Encrypt multiple images with batch processing"""
+
+    with st.spinner("🔄 Processing multiple images... Please wait"):
+        start_time = time.time()
+        results = []
+
+        # Create progress tracking
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        total_images = len(image_data)
+
+        for i, img_data in enumerate(image_data):
+            try:
+                status_text.text(f"Encrypting {img_data['name']} ({i+1}/{total_images})...")
+
+                # Determine seed for this image
+                if encryption_mode == "Same Seed for All":
+                    current_seed = seeds
+                elif encryption_mode == "Different Seed for Each":
+                    current_seed = seeds + i
+                else:  # Custom Seeds
+                    current_seed = seeds[img_data['name']]
+
+                # Save image temporarily
+                temp_path = f"temp_multi_{i}_{int(time.time())}.png"
+                cv2.imwrite(temp_path, img_data['array'])
+
+                # Encrypt image
+                img_start_time = time.time()
+                encryption_system = MedicalImageEncryption(seed=current_seed)
+                cipher_images, metadata = encryption_system.encrypt_medical_image(temp_path)
+                img_encryption_time = time.time() - img_start_time
+
+                # Store results
+                result = {
+                    'name': img_data['name'],
+                    'original': img_data['array'],
+                    'ciphers': cipher_images,
+                    'metadata': metadata,
+                    'seed': current_seed,
+                    'encryption_time': img_encryption_time,
+                    'status': 'success'
+                }
+                results.append(result)
+
+                # Clean up temp file
+                import os
+                os.remove(temp_path)
+
+                # Update progress
+                progress_bar.progress((i + 1) / total_images)
+
+            except Exception as e:
+                st.error(f"Error encrypting {img_data['name']}: {str(e)}")
+                results.append({
+                    'name': img_data['name'],
+                    'status': 'failed',
+                    'error': str(e)
+                })
+
+        total_time = time.time() - start_time
+        status_text.text("✅ Multi-image encryption completed!")
+
+        # Store results in session state
+        st.session_state.multi_encryption_results = {
+            'results': results,
+            'total_time': total_time,
+            'settings': {
+                'mode': encryption_mode,
+                'parallel_processing': parallel_processing,
+                'save_individual': save_individual,
+                'create_summary': create_summary
+            }
+        }
+
+        # Success message
+        successful_encryptions = sum(1 for r in results if r['status'] == 'success')
+        st.success(f"✅ Successfully encrypted {successful_encryptions}/{total_images} images in {total_time:.2f} seconds!")
+
+        st.rerun()
+
+def show_multi_encryption_results():
+    """Display results from multi-image encryption"""
+    st.markdown('<h3 class="sub-header">🎯 Multi-Image Encryption Results</h3>', unsafe_allow_html=True)
+
+    results_data = st.session_state.multi_encryption_results
+    results = results_data['results']
+    total_time = results_data['total_time']
+    settings = results_data['settings']
+
+    # Summary metrics
+    successful = [r for r in results if r['status'] == 'success']
+    failed = [r for r in results if r['status'] == 'failed']
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("📊 Total Images", len(results))
+    with col2:
+        st.metric("✅ Successful", len(successful))
+    with col3:
+        st.metric("❌ Failed", len(failed))
+    with col4:
+        st.metric("⏱️ Total Time", f"{total_time:.2f}s")
+
+    # Detailed results
+    if successful:
+        st.markdown("### 🔐 Encryption Results")
+
+        # Create tabs for different views
+        tab1, tab2, tab3 = st.tabs(["📋 Summary Table", "🖼️ Visual Results", "📊 Security Analysis"])
+
+        with tab1:
+            # Summary table
+            summary_data = []
+            for result in successful:
+                avg_entropy = np.mean([calculate_entropy(cipher) for cipher in result['ciphers']])
+                summary_data.append({
+                    "Image Name": result['name'],
+                    "Seed Used": result['seed'],
+                    "Cipher Count": len(result['ciphers']),
+                    "Encryption Time": f"{result['encryption_time']:.3f}s",
+                    "Avg Entropy": f"{avg_entropy:.3f}",
+                    "Original Size": f"{result['original'].shape[0]}×{result['original'].shape[1]}"
+                })
+
+            df_summary = pd.DataFrame(summary_data)
+            st.dataframe(df_summary, use_container_width=True)
+
+        with tab2:
+            # Visual results
+            for result in successful:
+                st.markdown(f"#### 🖼️ {result['name']}")
+
+                # Display original and ciphers
+                cols = st.columns(min(5, len(result['ciphers']) + 1))
+
+                with cols[0]:
+                    st.image(result['original'], caption="Original", use_column_width=True, clamp=True)
+
+                for i, cipher in enumerate(result['ciphers']):
+                    with cols[i + 1]:
+                        st.image(cipher, caption=f"Cipher {i+1}", use_column_width=True, clamp=True)
+
+                        # Download button for each cipher
+                        cipher_bytes = cv2.imencode('.png', cipher)[1].tobytes()
+                        st.download_button(
+                            f"💾 Download",
+                            cipher_bytes,
+                            f"{result['name']}_cipher_{i+1}.png",
+                            "image/png",
+                            key=f"download_{result['name']}_{i}"
+                        )
+
+                st.divider()
+
+        with tab3:
+            # Security analysis for all images
+            st.markdown("#### 🔒 Batch Security Analysis")
+
+            security_data = []
+            for result in successful:
+                for i, cipher in enumerate(result['ciphers']):
+                    entropy = calculate_entropy(cipher)
+                    correlation = np.corrcoef(result['original'].flatten(), cipher.flatten())[0, 1]
+                    pixel_change_rate = np.mean(result['original'] != cipher)
+
+                    security_data.append({
+                        "Image": result['name'],
+                        "Cipher": f"Cipher {i+1}",
+                        "Entropy": f"{entropy:.3f}",
+                        "Correlation": f"{correlation:.6f}",
+                        "Pixel Change": f"{pixel_change_rate:.3f}",
+                        "Seed": result['seed']
+                    })
+
+            df_security = pd.DataFrame(security_data)
+            st.dataframe(df_security, use_container_width=True)
+
+            # Aggregate statistics
+            st.markdown("#### 📈 Aggregate Statistics")
+
+            all_entropies = [float(row['Entropy']) for row in security_data]
+            all_correlations = [abs(float(row['Correlation'])) for row in security_data]
+
+            agg_col1, agg_col2, agg_col3 = st.columns(3)
+
+            with agg_col1:
+                st.metric("Average Entropy", f"{np.mean(all_entropies):.3f}")
+            with agg_col2:
+                st.metric("Average |Correlation|", f"{np.mean(all_correlations):.6f}")
+            with agg_col3:
+                st.metric("Min Entropy", f"{np.min(all_entropies):.3f}")
+
+    # Failed encryptions
+    if failed:
+        st.markdown("### ❌ Failed Encryptions")
+        for result in failed:
+            st.error(f"**{result['name']}**: {result['error']}")
+
+    # Batch download option
+    if successful:
+        st.markdown("### 📦 Batch Download")
+        if st.button("📥 Download All Cipher Images as ZIP", type="secondary"):
+            create_batch_download(successful)
+
+def create_batch_download(successful_results):
+    """Create a ZIP file with all cipher images"""
+    import zipfile
+    import io
+
+    # Create ZIP file in memory
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for result in successful_results:
+            base_name = result['name'].split('.')[0]
+
+            for i, cipher in enumerate(result['ciphers']):
+                # Encode image to bytes
+                _, img_encoded = cv2.imencode('.png', cipher)
+                img_bytes = img_encoded.tobytes()
+
+                # Add to ZIP
+                filename = f"{base_name}_cipher_{i+1}_seed_{result['seed']}.png"
+                zip_file.writestr(filename, img_bytes)
+
+    zip_buffer.seek(0)
+
+    # Download button
+    st.download_button(
+        label="📥 Download ZIP File",
+        data=zip_buffer.getvalue(),
+        file_name=f"multi_encrypted_images_{int(time.time())}.zip",
+        mime="application/zip"
+    )
+
 def show_encryption_results():
     st.markdown('<h3 class="sub-header">🎯 Encryption Results</h3>', unsafe_allow_html=True)
 
@@ -275,7 +965,7 @@ def show_test_suite_page():
     st.markdown('<h2 class="sub-header">🧪 Comprehensive Test Suite</h2>', unsafe_allow_html=True)
 
     st.markdown("""
-    यह section सभी encryption modules को test करता है और detailed results दिखाता है।
+    This section tests all encryption modules and displays detailed results with comprehensive analysis.
     """)
 
     if st.button("🚀 Run All Tests", type="primary"):
@@ -464,7 +1154,7 @@ def show_security_analysis_page():
     st.markdown('<h2 class="sub-header">📊 Security Analysis Dashboard</h2>', unsafe_allow_html=True)
 
     st.markdown("""
-    यह section encryption की security properties को analyze करता है।
+    This section analyzes the security properties and cryptographic strength of the encryption system.
     """)
 
     # Security benchmarks
@@ -650,6 +1340,8 @@ def show_about_page():
         "⚡ **Fast Performance**: 0.4-4.5 seconds per image",
         "📊 **High Quality**: 7.99/8.0 entropy, 0.001 correlation",
         "🔄 **Multiple Outputs**: 4 cipher images per input",
+        "📦 **Batch Processing**: Multi-image encryption with progress tracking",
+        "💾 **ZIP Downloads**: Batch download all encrypted results",
         "🏥 **Medical Focus**: Designed for healthcare applications",
         "✅ **Production Ready**: Comprehensive testing and validation"
     ]

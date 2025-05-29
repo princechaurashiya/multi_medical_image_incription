@@ -8,7 +8,7 @@ import cv2
 import os
 import json
 import matplotlib.pyplot as plt
-from medical_image_encryption import MedicalImageEncryption
+from core_implementation.medical_image_encryption import MedicalImageEncryption
 
 
 def create_sample_medical_images():

@@ -73,7 +73,8 @@ streamlit run streamlit_app.py
 
 The web interface provides:
 - 🏠 **Home Dashboard**: System overview and metrics
-- 🔐 **Image Encryption**: Upload and encrypt medical images
+- 🔐 **Single Image Encryption**: Upload and encrypt individual medical images
+- 🔄 **Multi-Image Encryption**: Batch process multiple images simultaneously
 - 🧪 **Test Suite**: Run comprehensive tests
 - 📊 **Security Analysis**: Detailed security metrics
 - 📈 **Performance Benchmarks**: Speed and efficiency data
@@ -83,8 +84,10 @@ The web interface provides:
 **Deployed Application**: [https://your-app-name.streamlit.app](https://your-app-name.streamlit.app)
 
 Try the live demo to:
-- Upload medical images for encryption
-- View real-time security analysis
+- Upload single or multiple medical images for encryption
+- Process batch encryption with different seed modes
+- View real-time security analysis and comparisons
+- Download individual cipher images or batch ZIP files
 - Run comprehensive test suites
 - Explore performance benchmarks
 

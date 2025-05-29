@@ -9,11 +9,11 @@ from typing import List, Tuple, Dict, Any
 import os
 
 # Import our custom modules
-from img_bluring import randomly_change_specified_bits, process_image_data
-from key_generation import KeyGenerator
-from dna_operations import DNAOperations
-from fisher_scrambling import FisherScrambling
-from bit_plane_operations import BitPlaneOperations
+from .img_bluring import randomly_change_specified_bits, process_image_data
+from .key_generation import KeyGenerator
+from .dna_operations import DNAOperations
+from .fisher_scrambling import FisherScrambling
+from .bit_plane_operations import BitPlaneOperations
 
 
 class MedicalImageEncryption:
@@ -304,6 +304,89 @@ class MedicalImageEncryption:
 
         print(f"Encryption completed! Generated {len(final_ciphers)} cipher images.")
         return final_ciphers, self.encryption_metadata
+
+    def encrypt_multiple_medical_images(self, image_paths: List[str], seeds: List[int] = None) -> List[Tuple[List[np.ndarray], Dict[str, Any]]]:
+        """
+        Encrypt multiple medical images with batch processing
+
+        Args:
+            image_paths: List of paths to medical images
+            seeds: Optional list of seeds for each image (if None, uses self.seed + index)
+
+        Returns:
+            List of tuples (cipher_images, metadata) for each image
+        """
+        print(f"Starting batch encryption for {len(image_paths)} medical images...")
+
+        results = []
+
+        for i, image_path in enumerate(image_paths):
+            try:
+                # Determine seed for this image
+                if seeds is not None and i < len(seeds):
+                    current_seed = seeds[i]
+                else:
+                    current_seed = (self.seed if self.seed else 42) + i
+
+                # Create new encryption system with specific seed
+                encryption_system = MedicalImageEncryption(seed=current_seed)
+
+                print(f"Encrypting image {i+1}/{len(image_paths)}: {os.path.basename(image_path)} (seed: {current_seed})")
+
+                # Encrypt the image
+                cipher_images, metadata = encryption_system.encrypt_medical_image(image_path)
+
+                # Add batch information to metadata
+                metadata['batch_info'] = {
+                    'batch_index': i,
+                    'total_images': len(image_paths),
+                    'image_name': os.path.basename(image_path),
+                    'seed_used': current_seed
+                }
+
+                results.append((cipher_images, metadata))
+
+            except Exception as e:
+                print(f"Error encrypting {image_path}: {str(e)}")
+                # Add error result
+                results.append(([], {'error': str(e), 'image_path': image_path}))
+
+        print(f"Batch encryption completed! Processed {len(results)} images.")
+        return results
+
+    def save_batch_cipher_images(self, batch_results: List[Tuple[List[np.ndarray], Dict[str, Any]]],
+                                output_base_dir: str = "batch_cipher_outputs"):
+        """
+        Save cipher images from batch processing
+
+        Args:
+            batch_results: Results from encrypt_multiple_medical_images
+            output_base_dir: Base directory for outputs
+        """
+        os.makedirs(output_base_dir, exist_ok=True)
+
+        for i, (cipher_images, metadata) in enumerate(batch_results):
+            if 'error' in metadata:
+                print(f"Skipping failed encryption: {metadata['image_path']}")
+                continue
+
+            # Create subdirectory for this image
+            if 'batch_info' in metadata:
+                image_name = metadata['batch_info']['image_name'].split('.')[0]
+                seed_used = metadata['batch_info']['seed_used']
+            else:
+                image_name = f"image_{i}"
+                seed_used = self.seed if self.seed else 42
+
+            image_output_dir = os.path.join(output_base_dir, f"{image_name}_seed_{seed_used}")
+            os.makedirs(image_output_dir, exist_ok=True)
+
+            # Save cipher images
+            for j, cipher in enumerate(cipher_images):
+                output_path = os.path.join(image_output_dir, f"cipher_{j+1}.png")
+                cv2.imwrite(output_path, cipher)
+
+            print(f"Saved {len(cipher_images)} cipher images for {image_name} to: {image_output_dir}")
 
     def save_cipher_images(self, cipher_images: List[np.ndarray], output_dir: str = "cipher_outputs"):
         """
