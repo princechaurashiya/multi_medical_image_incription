@@ -59,6 +59,35 @@ pip install numpy opencv-python matplotlib
 # Note: hashlib is part of Python standard library
 ```
 
+### 🌐 Web Interface (Streamlit)
+
+For the interactive web interface, install additional dependencies:
+
+```bash
+# Install Streamlit and web dependencies
+pip install -r requirements.txt
+
+# Run the web application
+streamlit run streamlit_app.py
+```
+
+The web interface provides:
+- 🏠 **Home Dashboard**: System overview and metrics
+- 🔐 **Image Encryption**: Upload and encrypt medical images
+- 🧪 **Test Suite**: Run comprehensive tests
+- 📊 **Security Analysis**: Detailed security metrics
+- 📈 **Performance Benchmarks**: Speed and efficiency data
+
+### 🚀 Live Demo
+
+**Deployed Application**: [https://your-app-name.streamlit.app](https://your-app-name.streamlit.app)
+
+Try the live demo to:
+- Upload medical images for encryption
+- View real-time security analysis
+- Run comprehensive test suites
+- Explore performance benchmarks
+
 ### Virtual Environment Setup (Recommended)
 
 ```bash
