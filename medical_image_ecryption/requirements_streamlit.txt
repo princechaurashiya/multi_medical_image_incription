@@ -1,0 +1,20 @@
+# Requirements for Streamlit Web Interface
+# Medical Image Encryption System
+
+# Core dependencies (already installed)
+numpy>=1.21.0
+opencv-python>=4.5.0
+matplotlib>=3.5.0
+
+# Streamlit and web interface
+streamlit>=1.28.0
+plotly>=5.15.0
+pandas>=1.5.0
+
+# Additional visualization
+seaborn>=0.11.0
+pillow>=8.0.0
+
+# Optional performance improvements
+scipy>=1.9.0
+scikit-image>=0.19.0
